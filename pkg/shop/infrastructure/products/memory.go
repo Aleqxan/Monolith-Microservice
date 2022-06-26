@@ -5,17 +5,35 @@ import (
 )
 
 type MemoryRepository struct {
-
+	products []products.Product
 }
 
-func Save{
 
+func NewMemoryRepository() *MemoryRepository{
+	return &MemoryRepository{[]products.Product[]}
+}
+func (m *MemoryRepository) Save(productToSave *products.Product) error{
+	for i, p := range m.products{
+		if p.ID == productToSave.ID() {
+			m.products[i] = *&productToSave
+			return nil
+		}
+	}
+
+	m.products = append(m.products, *&productToSave)
+	return nil
 }
 
-func ByID{
+func (m MemoryRepository) ByID(id products.ID)(*products.Product, error){
 	
+	for _,p := range m.product{
+		if p.ID() == id {
+			return &p, nil
+		}
+	}
+	return nil, products.ErrNotFound
 }
 
-func AllProducts(){
-	
+func (m MemoryRepository) AllProducts()([]products.Product, error){
+	return m.products, nil 
 }
