@@ -32,16 +32,51 @@ type PlaceOrderCommand struct {
 
 
 type PlaceOrderCommandAddress struct {
-	Name			 string
-	street	       	string
-	City			string
-	PostalCode		 string
-	Country 		string
+	Name			    string
+	street	 	      	string
+	City				string
+	PostalCode			string
+	Country 			string
 }
 
 
 func (s OrdersService) PlaceOrder(cmd PlaceOrderCommand) error {
+	address, err := order.NewAddress(
+		cmd.Address.Name,
+		cmd.Address.Street,
+		cmd.Address.City,
+		cmd.Address.PostCode,
+		cmd.Address.Country,
+	)
 
+	if err != nil {
+		return errors.Wrap(err, "Invalid address")
+	}
+
+	// 1. Gettting the product by id
+
+	product, err := s.productsService.ProductsByID(cmd.ProductID)
+	if err != nil {
+		return errors.Wrap(err, "Cannot get the product")
+	}
+	// 2. Create a new PlaceOrder
+
+	mewOrder, err := orders.NewOrder(cmd.OrderID, product, address)
+	if err != nil {
+		return errors.Wrap(err, "Cannot create order")
+	}
+	// 3. Save the order
+
+	if err := s.ordersRepository.Save(newOrder); err != nil{
+		return errors.Wrap(err, "cannot save order")
+	}
+	// 4. Initialize the payment
+
+	if err := s.paymentsService.InitializeOrderPayment(newOrder.ID(), newOrder.Product().Price()); err != nil {
+		return errors.Wrap(err, "Cannot initialize payment")
+	}
+	log.Printf("order %s placed", &cmd.OrderID)
+	return nil
 }
 
 type MarkOrderAsPaidCommand struct {
@@ -49,7 +84,18 @@ type MarkOrderAsPaidCommand struct {
 }
 
 func (s OrdersService) MarkOrderAsPaidCommand(cmd MarkOrderAsPaidCommand) error {
+	o, err := s.ByID(cmd.OrdersID)
+	if err != nil {
+		return errors.Wrap(err, "Cannot get order %s", cmd.OrdersID)
+	}
+	o.MarkAsPaid()
 
+	if err := s.ordersRepository.Save(o); err != nil{
+		return errors.Wrap(err, "cannot save order")
+	}
+
+	log.Printf("marked order %s, as paid", cmd.OrdersID)
+	return nil 
 }
 
 func (s OrdersService) OrderByID(id orders.ID) (orders.Order, error) {
